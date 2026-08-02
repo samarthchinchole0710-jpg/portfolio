@@ -1,0 +1,65 @@
+<svg viewBox="0 0 900 640" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#444"/>
+    </marker>
+  </defs>
+
+  <rect width="900" height="640" fill="#ffffff"/>
+  <text x="450" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#1a1a1a">Trunk Link Not Passing Traffic — Troubleshooting Flow</text>
+
+  <!-- Start -->
+  <rect x="370" y="55" width="160" height="45" rx="22" fill="#2b6cb0"/>
+  <text x="450" y="83" text-anchor="middle" font-size="13" fill="#fff">Trunk link issue reported</text>
+
+  <line x1="450" y1="100" x2="450" y2="130" stroke="#444" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Decision 1 -->
+  <polygon points="450,130 560,180 450,230 340,180" fill="#fefcbf" stroke="#b7791f" stroke-width="2"/>
+  <text x="450" y="176" text-anchor="middle" font-size="12" fill="#1a1a1a">Interface shows</text>
+  <text x="450" y="192" text-anchor="middle" font-size="12" fill="#1a1a1a">"connected"?</text>
+
+  <line x1="340" y1="180" x2="170" y2="180" stroke="#444" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="255" y="170" text-anchor="middle" font-size="11" fill="#c53030">No</text>
+  <rect x="30" y="157" width="140" height="46" rx="6" fill="#fed7d7" stroke="#c53030"/>
+  <text x="100" y="176" text-anchor="middle" font-size="11" fill="#742a2a">Check physical cable</text>
+  <text x="100" y="191" text-anchor="middle" font-size="11" fill="#742a2a">and interface status</text>
+
+  <line x1="450" y1="230" x2="450" y2="260" stroke="#444" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="465" y="250" font-size="11" fill="#2f855a">Yes</text>
+
+  <!-- Decision 2 -->
+  <polygon points="450,260 570,315 450,370 330,315" fill="#fefcbf" stroke="#b7791f" stroke-width="2"/>
+  <text x="450" y="308" text-anchor="middle" font-size="12" fill="#1a1a1a">Both sides set to</text>
+  <text x="450" y="324" text-anchor="middle" font-size="12" fill="#1a1a1a">"trunk" mode?</text>
+
+  <line x1="330" y1="315" x2="170" y2="315" stroke="#444" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="250" y="305" text-anchor="middle" font-size="11" fill="#c53030">No</text>
+  <rect x="30" y="292" width="140" height="46" rx="6" fill="#fed7d7" stroke="#c53030"/>
+  <text x="100" y="311" text-anchor="middle" font-size="11" fill="#742a2a">Set matching trunk</text>
+  <text x="100" y="326" text-anchor="middle" font-size="11" fill="#742a2a">mode on both switches</text>
+
+  <line x1="450" y1="370" x2="450" y2="400" stroke="#444" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="465" y="390" font-size="11" fill="#2f855a">Yes</text>
+
+  <!-- Decision 3 -->
+  <polygon points="450,400 580,458 450,516 320,458" fill="#fefcbf" stroke="#b7791f" stroke-width="2"/>
+  <text x="450" y="450" text-anchor="middle" font-size="12" fill="#1a1a1a">Required VLAN in</text>
+  <text x="450" y="466" text-anchor="middle" font-size="12" fill="#1a1a1a">allowed VLAN list</text>
+  <text x="450" y="482" text-anchor="middle" font-size="12" fill="#1a1a1a">on both sides?</text>
+
+  <line x1="320" y1="458" x2="170" y2="458" stroke="#444" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="250" y="448" text-anchor="middle" font-size="11" fill="#c53030">No</text>
+  <rect x="30" y="435" width="140" height="46" rx="6" fill="#fed7d7" stroke="#c53030"/>
+  <text x="100" y="454" text-anchor="middle" font-size="11" fill="#742a2a">Add VLAN to allowed</text>
+  <text x="100" y="469" text-anchor="middle" font-size="11" fill="#742a2a">list on both switches</text>
+
+  <line x1="450" y1="516" x2="450" y2="546" stroke="#444" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="465" y="536" font-size="11" fill="#2f855a">Yes</text>
+
+  <!-- End -->
+  <rect x="350" y="546" width="200" height="50" rx="25" fill="#2f855a"/>
+  <text x="450" y="576" text-anchor="middle" font-size="13" fill="#fff">Trunk operational — verify</text>
+
+  <text x="450" y="625" text-anchor="middle" font-size="10" fill="#888">Portfolio sample — accompanies Sample 01 configuration guide</text>
+</svg>
