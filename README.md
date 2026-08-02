@@ -30,15 +30,15 @@ I write documentation that helps engineers, technicians, and end users get thing
 
 ## Tools & Skills
 
-**Authoring tools:** MadCap Flare, RoboHelp, Oxygen XML, Arbortext, Adobe FrameMaker, MS Word
-**Languages & markup:** HTML5, CSS3, XML (DITA), Markdown, SGML
-**Platforms:** Git, Jira, Confluence, SharePoint, AEM, Helpzone
-**Other:** SnagIT, AI-assisted documentation workflows, ASD-STE100 controlled language standards
+- **Authoring tools:** MadCap Flare, RoboHelp, Oxygen XML, Arbortext, Adobe FrameMaker, MS Word
+- **Languages & markup:** HTML5, CSS3, XML (DITA), Markdown, SGML
+- **Platforms:** Git, Jira, Confluence, SharePoint, AEM, Helpzone
+- **Other:** SnagIT, AI-assisted documentation workflows, ASD-STE100 controlled language standards, Adobe Acrobat
 
 ## Experience
 
-**Technical Publishing Engineer** — Weloglobal (Welocalize) for Cisco | 08/2025–Present
-**Technical Author** — Sonovision-Aetos for Dassault | 03/2023–08/2025
+- **Technical Publishing Engineer** — Weloglobal (Welocalize) for Cisco | 08/2025–Present
+- **Technical Author** — Sonovision-Aetos for Dassault | 03/2023–08/2025
 
 *(Full resume available on request)*
 
