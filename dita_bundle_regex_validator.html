@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DITA Regex Validator & NEBS Topicref Commenter</title>
+<style>
+:root{color-scheme:light dark;font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}body{max-width:1120px;margin:0 auto;padding:24px}h1{line-height:1.2}label{display:block;font-weight:650;margin:14px 0 6px}textarea{box-sizing:border-box;width:100%;min-height:100px;padding:12px;font:13px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}#bundle{min-height:auto}button{padding:9px 14px;margin:12px 8px 12px 0;cursor:pointer}.note{padding:12px;border:1px solid #8888;border-radius:8px}.status{font-weight:700;margin:12px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;border:1px solid #8888;border-radius:8px}.small{opacity:.8;font-size:.92em}.regex-card{border:1px solid #8888;border-radius:8px;padding:12px;margin:12px 0}.regex-status{font-weight:650}.good{color:#16803d}.bad{color:#c43d3d}.muted{opacity:.8}
+</style></head>
+<body>
+<h1>DITA Regex Validator & NEBS Topicref Commenter</h1>
+<p>Upload a ZIP bundle to validate all regex patterns, check menucascade XML syntax, and locate NEBS references. The tool logs matching files, line numbers and original snippets before proposing any changes. It does not overwrite the uploaded archive; a modified ZIP is only created when you explicitly download it.</p>
+<div class="regex-card"><h2>Regex validation — run all together</h2><p>All regex patterns and menucascade syntax checks run together against the selected bundle. Keep one regex pattern per line; the supplied patterns are preloaded below. The syntax check flags self-closing or empty &lt;menucascade&gt; elements and non-whitespace plain text directly inside &lt;menucascade&gt; but outside &lt;uicontrol&gt;. Whitespace and line breaks between elements are ignored.</p><label for="regexes">Regex patterns (one per line)</label><textarea id="regexes" style="min-height:150px">&lt;menucascade&gt;(?!(?:\s*&lt;uicontrol\b[^&gt;]*&gt;.*?&lt;/uicontrol&gt;\s*)+&lt;/menucascade&gt;)[\s\S]*?&lt;/menucascade&gt;
+&lt;image\b[^&gt;]*&gt;(?:(?!&lt;alt\b)[\s\S])*?&lt;alt\b[^&gt;]*&gt;[\s\S]*?&lt;/alt&gt;(?![\s\S]*?&lt;/image&gt;)[\s\S]*?&lt;/image&gt;</textarea><div id="regexResults"><pre id="allRegexResults">No scan results yet.</pre></div><p class="small">The combined report includes regex validity/matches, menucascade syntax findings, and image/alt content findings with file names, line numbers, and snippets. Regex matches are not automatically errors; review them in context.</p></div>
+<div class="note"><h2>NEBS reference action</h2><p>Find active references to <code>nebs-statements.xml</code> inside <code>.ditamap</code> files. Already-commented references are ignored. Report the file, line number and original <code>&lt;topicref&gt;</code>; propose commenting out the matching topicref element (including nested content, if paired tags are used).</p><pre>&lt;topicref format="dita" href="../install-preparation/nebs-statements.xml" navtitle="Network Equipment-Building System (NEBS) statements" scope="local" type="concept"/&gt;</pre></div>
+<label for="bundle">Choose a ZIP bundle</label><input id="bundle" type="file" accept=".zip,application/zip">
+<div><button id="validate">Validate regexes &amp; preview changes</button><button id="download" disabled>Download reviewed modified ZIP</button></div>
+<div id="status" class="status" role="status">No bundle loaded. No changes made.</div>
+<label>Pre-change log</label><pre id="log">Waiting for ZIP bundle.</pre>
+<label>Proposed NEBS change preview</label><textarea id="preview" readonly placeholder="Original and proposed commented topicref will appear here."></textarea>
+<p class="small">Runs locally in your browser. ZIP processing uses JSZip from a CDN, so internet access is needed to load the library. Use only if browser-side processing is allowed by your organization's policy.</p>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+(() => {
+ const $=id=>document.getElementById(id), fileInput=$('bundle'), validateBtn=$('validate'), downloadBtn=$('download'), statusEl=$('status'), logEl=$('log'), previewEl=$('preview');
+ let proposedZip=null, logLines=[];
+ const stamp=()=>new Date().toISOString();
+ const log=msg=>{logLines.push(`[${stamp()}] ${msg}`);logEl.textContent=logLines.join('\n')};
+ const lineAt=(s,i)=>s.slice(0,i).split('\n').length;
+ function validateAllRegexes(files){
+   const patterns=$('regexes').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);const reports=[];
+   if(!patterns.length){$('allRegexResults').textContent='Enter at least one regex pattern, one per line.';log('No regex patterns entered.');return;}
+   patterns.forEach((raw,index)=>{
+     const name=`Regex ${index+1}`;let re;
+     try{re=new RegExp(raw,'gi');}
+     catch(e){reports.push(`${name}: INVALID — ${e.message}\nPattern: ${raw}`);log(`${name}: INVALID regex — ${e.message}`);return;}
+     let total=0, shown=[];
+     for(const f of files){if(!/\.(ditamap|dita|xml|ditaval|xsl|xslt|ent|mod)$/i.test(f.name))continue;const text=f.text;re.lastIndex=0;let m,count=0;
+       while((m=re.exec(text))!==null){count++;total++;if(shown.length<40)shown.push(`${f.name}:${lineAt(text,m.index)} — ${m[0].slice(0,500).replace(/\n/g,'\\n')}${m[0].length>500?'…':''}`);if(m[0].length===0)re.lastIndex++;}
+       if(count)log(`${name}: ${f.name} — ${count} match(es)`);
+     }
+     reports.push(`${name}: VALID\nPattern: ${raw}\nTotal matches: ${total}\n${shown.length?shown.join('\n'):'No matches found.'}${total>shown.length?`\n… ${total-shown.length} additional match(es) not shown.`:''}`);
+     log(`${name}: VALID syntax; ${total} match(es) across scanned text files.`);
+   });
+   $('allRegexResults').textContent=reports.join('\n\n'+'-'.repeat(60)+'\n\n');
+ }
+ // Check menucascade elements with a lightweight XML-token scan. This is a targeted
+ // well-formed-tag/content check, not a substitute for a full XML parser/schema validator.
+ function validateMenucascade(files){
+   const findings=[];
+   const tokenRe=/<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<!\[CDATA\[[\s\S]*?\]\]>|<![^>]*>|<\/?[A-Za-z_:][\w:.-]*(?:\s+(?:[^>"']|"[^"]*"|'[^']*')*)?\s*\/?>|[^<]+|</g;
+   for(const f of files){
+     if(!/\.(ditamap|dita|xml|ditaval|xsl|xslt|ent|mod)$/i.test(f.name))continue;
+     const stack=[];let m;
+     while((m=tokenRe.exec(f.text))!==null){const tok=m[0], idx=m.index;
+       if(tok.startsWith('<!--')||tok.startsWith('<?')||tok.startsWith('<!'))continue;
+       if(tok.startsWith('</')){
+         const name=(/^<\/\s*([\w:.-]+)/.exec(tok)||[])[1]; if(!name)continue;
+         let frame=null; for(let i=stack.length-1;i>=0;i--){if(stack[i].name.toLowerCase()===name.toLowerCase()){frame=stack[i];stack.length=i;break;}}
+         if(frame&&frame.name.toLowerCase()==='menucascade'&&!frame.hasChildElement&&!frame.hasText){findings.push({file:f.name,line:lineAt(f.text,frame.index),kind:'EMPTY MENUCASCADE',snippet:f.text.slice(frame.index,tokenRe.lastIndex).slice(0,400).replace(/\n/g,'\\n')});}
+         continue;
+       }
+       if(tok.startsWith('<')){
+         const nm=(/^<\s*([\w:.-]+)/.exec(tok)||[])[1]; if(!nm)continue;
+         const selfClose=/\/\s*>$/.test(tok); const parent=stack[stack.length-1];
+         if(parent&&parent.name.toLowerCase()==='menucascade')parent.hasChildElement=true;
+         if(nm.toLowerCase()==='menucascade'&&selfClose){findings.push({file:f.name,line:lineAt(f.text,idx),kind:'EMPTY MENUCASCADE',snippet:tok});continue;}
+         if(!selfClose)stack.push({name:nm,index:idx,hasChildElement:false,hasText:false});
+         continue;
+       }
+       if(tok.trim()){
+         const current=stack[stack.length-1];
+         if(current&&current.name.toLowerCase()==='menucascade'){
+           current.hasText=true;
+           findings.push({file:f.name,line:lineAt(f.text,idx),kind:'PLAIN TEXT OUTSIDE UICONTROL',snippet:tok.trim().slice(0,300)});
+         }
+       }
+     }
+   }
+   const summary=findings.length?findings.map((x,i)=>`${i+1}. ${x.kind} — ${x.file}:${x.line}\n   ${x.snippet}`).join('\n'):'No menucascade syntax issues found.';
+   const prior=$('allRegexResults').textContent;
+   $('allRegexResults').textContent=prior+'\n\n'+'='.repeat(60)+'\nMENUCASCADE XML SYNTAX CHECK\nFindings: '+findings.length+'\n'+summary;
+   findings.forEach(x=>log(`MENUCASCADE ${x.kind}: ${x.file}:${x.line} — ${x.snippet}`));
+   log(`Menucascade syntax check complete: ${findings.length} finding(s).`);
+ }
+ // Check image content: when an <image> has an <alt> child, non-whitespace text
+ // anywhere inside that image but outside the <alt> element is reported. Formatting
+ // whitespace and line breaks are ignored; comments/CDATA are not treated as plain text.
+ function validateImageAltText(files){
+   const findings=[];
+   const tokenRe=/<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<!\[CDATA\[[\s\S]*?\]\]>|<![^>]*>|<\/?[A-Za-z_:][\w:.-]*(?:\s+(?:[^>"']|"[^"]*"|'[^']*')*)?\s*\/?>|[^<]+|</g;
+   for(const f of files){
+     if(!/\.(ditamap|dita|xml|ditaval|xsl|xslt|ent|mod)$/i.test(f.name))continue;
+     const stack=[];let m;
+     while((m=tokenRe.exec(f.text))!==null){
+       const tok=m[0],idx=m.index;
+       if(tok.startsWith('<!--')||tok.startsWith('<?')||tok.startsWith('<!'))continue;
+       if(tok.startsWith('</')){
+         const name=(/^<\/\s*([\w:.-]+)/.exec(tok)||[])[1];if(!name)continue;
+         for(let i=stack.length-1;i>=0;i--){if(stack[i].name.toLowerCase()===name.toLowerCase()){stack.length=i;break;}}
+         continue;
+       }
+       if(tok.startsWith('<')){
+         const name=(/^<\s*([\w:.-]+)/.exec(tok)||[])[1];if(!name)continue;
+         if(!/\/\s*>$/.test(tok))stack.push({name,index:idx});
+         continue;
+       }
+       if(!tok.trim())continue;
+       let imageIndex=-1, altAfterImage=false;
+       for(let i=stack.length-1;i>=0;i--){
+         const n=stack[i].name.toLowerCase();
+         if(n==='alt' && imageIndex<0) altAfterImage=true;
+         if(n==='image'){imageIndex=i;break;}
+       }
+       if(imageIndex>=0){
+         // Only <alt> descendants of this image exempt their text from the rule.
+         altAfterImage=stack.slice(imageIndex+1).some(x=>x.name.toLowerCase()==='alt');
+         if(!altAfterImage)findings.push({file:f.name,line:lineAt(f.text,idx),kind:'PLAIN TEXT OUTSIDE ALT IN IMAGE',snippet:tok.trim().slice(0,300).replace(/\n/g,'\\n')});
+       }
+     }
+   }
+   const summary=findings.length?findings.map((x,i)=>`${i+1}. ${x.kind} — ${x.file}:${x.line}\n   ${x.snippet}`).join('\n'):'No plain text outside <alt> inside <image> elements found.';
+   const prior=$('allRegexResults').textContent;
+   $('allRegexResults').textContent=prior+'\n\n'+'='.repeat(60)+'\nIMAGE / ALT CONTENT CHECK\nFindings: '+findings.length+'\n'+summary;
+   findings.forEach(x=>log(`IMAGE ${x.kind}: ${x.file}:${x.line} — ${x.snippet}`));
+   log(`Image/alt content check complete: ${findings.length} finding(s).`);
+ }
+ // Finds active (not XML-commented) NEBS topicrefs. The lexer skips comments, CDATA,
+ // processing instructions and declarations so already-commented references are never changed.
+ function findNebsTopicrefs(xml){
+   const tokenRe=/<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<![^>]*>|<\/?topicref\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi;
+   const stack=[], found=[];let m;
+   while((m=tokenRe.exec(xml))!==null){
+     const tag=m[0],index=m.index;
+     if(tag.startsWith('<!--')||tag.startsWith('<![CDATA[')||tag.startsWith('<?')||/^<!/.test(tag))continue;
+     if(/^<\/topicref\b/i.test(tag)){
+       // Pop the most recent active topicref opener, preserving its original span.
+       const open=stack.pop();
+       if(open&&open.matches)found.push({index:open.index,text:xml.slice(open.index,tokenRe.lastIndex),line:lineAt(xml,open.index)});
+       continue;
+     }
+     const href=/\bhref\s*=\s*(["'])(.*?)\1/i.exec(tag);
+     const target=!!href&&/(?:^|[\\/])nebs-statements\.xml(?:[?#].*)?$/i.test(href[2].replace(/\\/g,'/'));
+     const selfClose=/\/\s*>$/.test(tag);
+     if(selfClose){if(target)found.push({index,text:tag,line:lineAt(xml,index)});}
+     else stack.push({index,matches:target});
+   }
+   // Keep only non-overlapping spans, preferring the outer topicref if topicrefs are nested.
+   found.sort((a,b)=>a.index-b.index);const nonOverlap=[];let end=-1;
+   for(const h of found){if(h.index>=end){nonOverlap.push(h);end=h.index+h.text.length;}}
+   return nonOverlap;
+ }
+ validateBtn.addEventListener('click',async()=>{
+   logLines=[];logEl.textContent='';previewEl.value='';downloadBtn.disabled=true;proposedZip=null;
+   const file=fileInput.files&&fileInput.files[0];if(!file){statusEl.textContent='Choose a ZIP bundle first. No changes made.';log('STOP: No ZIP bundle selected.');return;}
+   if(!window.JSZip){statusEl.textContent='ZIP library unavailable. No changes made.';log('ERROR: JSZip did not load; check internet/CDN access.');return;}
+   try{
+     log(`Bundle: ${file.name} (${file.size} bytes)`);log('Source ZIP remains unchanged; all processing is in memory.');
+     const zip=await JSZip.loadAsync(file), entries=Object.values(zip.files).filter(f=>!f.dir), textFiles=[];
+     for(const entry of entries){if(/\.(ditamap|dita|xml|ditaval|xsl|xslt|ent|mod)$/i.test(entry.name)){const bytes=await entry.async('uint8array');textFiles.push({name:entry.name,text:new TextDecoder('utf-8',{fatal:false}).decode(bytes),bytes,entry});}}
+     log(`Archive entries: ${entries.length}; text/XML-like files loaded for regex checks: ${textFiles.length}`);
+     validateAllRegexes(textFiles);
+     validateMenucascade(textFiles);
+     validateImageAltText(textFiles);
+     const out=new JSZip(), previews=[];let nebsCount=0, mapsScanned=0;
+     for(const entry of entries){const tf=textFiles.find(x=>x.name===entry.name);if(!tf){const bytes=await entry.async('uint8array');out.file(entry.name,bytes,{date:entry.date,comment:entry.comment,unixPermissions:entry.unixPermissions,dosPermissions:entry.dosPermissions});continue;}
+       if(!/\.ditamap$/i.test(entry.name)){out.file(entry.name,tf.bytes,{date:entry.date,comment:entry.comment,unixPermissions:entry.unixPermissions,dosPermissions:entry.dosPermissions});continue;}
+       mapsScanned++;const hits=findNebsTopicrefs(tf.text);if(!hits.length){out.file(entry.name,tf.bytes,{date:entry.date,comment:entry.comment,unixPermissions:entry.unixPermissions,dosPermissions:entry.dosPermissions});continue;}
+       nebsCount+=hits.length;log(`NEBS MATCH: ${entry.name} — line(s) ${hits.map(h=>h.line).join(', ')}; ${hits.length} topicref(s).`);let updated=tf.text;
+       for(const hit of [...hits].sort((a,b)=>b.index-a.index)){const comment=`<!--\n${hit.text}\n-->`;updated=updated.slice(0,hit.index)+comment+updated.slice(hit.index+hit.text.length);if(previews.length<20)previews.push(`FILE: ${entry.name} (line ${hit.line})\n--- BEFORE ---\n${hit.text}\n--- PROPOSED AFTER ---\n${comment}`);}
+       out.file(entry.name,updated,{date:entry.date,comment:entry.comment,unixPermissions:entry.unixPermissions,dosPermissions:entry.dosPermissions});
+     }
+     log(`DITAMAP files scanned for active NEBS references: ${mapsScanned}`);log(`Total active NEBS topicref matches (already-commented entries ignored): ${nebsCount}`);log('Pre-change log captured before any modified ZIP is downloaded.');
+     if(nebsCount){proposedZip=out;previewEl.value=previews.join('\n\n'+'='.repeat(56)+'\n\n');if(nebsCount>previews.length)previewEl.value+=`\n\nPreview shows ${previews.length} match(es); ${nebsCount-previews.length} additional match(es) are in the log.`;downloadBtn.disabled=false;statusEl.textContent=`Validation complete. NEBS reference(s): ${nebsCount}. Review preview before downloading.`;log('PREVIEW ONLY: no original file changed. Download is a separate explicit action.');}
+     else {statusEl.textContent='Validation complete. No NEBS topicref found; no content changes proposed.';log('No NEBS topicref found. No content changes proposed.');}
+   }catch(e){proposedZip=null;downloadBtn.disabled=true;statusEl.textContent='Could not process bundle. No modified ZIP available.';log(`ERROR: ${e.message||String(e)}`);}
+ });
+ downloadBtn.addEventListener('click',async()=>{if(!proposedZip)return;try{log('User requested download after reviewing the preview.');const blob=await proposedZip.generateAsync({type:'blob'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=(fileInput.files[0]?.name||'bundle.zip').replace(/\.zip$/i,'')+'-commented.zip';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);log('Download initiated; uploaded source ZIP was not overwritten.');statusEl.textContent='Modified copy download initiated; original ZIP remains unchanged.';}catch(e){log(`DOWNLOAD ERROR: ${e.message||String(e)}`);statusEl.textContent='Download failed; source ZIP remains unchanged.';}});
+})();
+</script></body></html>

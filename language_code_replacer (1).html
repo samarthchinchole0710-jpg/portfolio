@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Code Replacer - XML & DITA Localization Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 700px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .header small {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .file-upload-container {
+            position: relative;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+
+        .file-upload-container:hover {
+            border-color: #764ba2;
+            background: #f0f1ff;
+        }
+
+        .file-upload-container.dragover {
+            border-color: #764ba2;
+            background: #e8e9ff;
+            transform: scale(1.02);
+        }
+
+        .file-upload-container input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 13px;
+        }
+
+        .file-info {
+            background: #f0f1ff;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-info-text {
+            color: #333;
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .form-row-full {
+            grid-column: 1 / -1;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h3 {
+            color: #333;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .language-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .language-item {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-size: 13px;
+            color: #555;
+            background: white;
+        }
+
+        .language-item:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .language-item.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .language-flag {
+            font-size: 18px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .language-name {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .language-code {
+            display: block;
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        .custom-language {
+            display: none;
+        }
+
+        .custom-language.show {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+        .custom-lang-input {
+            display: flex;
+            gap: 8px;
+        }
+
+        .custom-lang-input input {
+            flex: 1;
+        }
+
+        .custom-lang-input button {
+            flex-shrink: 0;
+        }
+
+        .preview-box {
+            background: #f0f1ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #333;
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #processBtn {
+            background: #667eea;
+            color: white;
+            grid-column: 1 / -1;
+        }
+
+        #processBtn:hover:not(:disabled) {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        #processBtn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #resetBtn {
+            background: #f0f1ff;
+            color: #667eea;
+            border: 1px solid #667eea;
+        }
+
+        #resetBtn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        #downloadBtn {
+            background: #4caf50;
+            color: white;
+            grid-column: 1 / -1;
+            display: none;
+        }
+
+        #downloadBtn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
+        }
+
+        #downloadBtn.show {
+            display: block;
+        }
+
+        .status-message {
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+            font-size: 13px;
+        }
+
+        .status-message.show {
+            display: block;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .progress-container {
+            display: none;
+            margin-bottom: 15px;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #666;
+            text-align: center;
+        }
+
+        .stats {
+            background: #f0f1ff;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+            border-left: 4px solid #667eea;
+        }
+
+        .stats.show {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #667eea;
+            margin-top: 5px;
+        }
+
+        .deleted-file-item {
+            background: white;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+            font-size: 12px;
+            color: #333;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .replaced-files-container {
+            background: #f0f1ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .replaced-files-container.show {
+            display: block;
+        }
+
+        .replaced-files-container h3 {
+            color: #333;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .file-type-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 3px;
+            text-transform: uppercase;
+        }
+
+        .file-type-badge.ditamap {
+            background: #2196F3;
+        }
+
+        .file-type-badge.xml {
+            background: #FF9800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌐 Language Code Replacer</h1>
+            <p>Update xml:lang attributes in XML & DITA map files</p>
+            <small>Upload a ZIP file containing XML and/or DITA map files to replace language codes</small>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <form id="mainForm">
+            <div class="form-group">
+                <label for="fileInput">Upload ZIP File</label>
+                <div class="file-upload-container" id="uploadContainer">
+                    <input type="file" id="fileInput" accept=".zip" />
+                    <div class="upload-icon">📦</div>
+                    <div class="upload-text">Click or drag ZIP file here</div>
+                    <div class="upload-subtext">Supported: ZIP containing XML or DITA map files</div>
+                    <div class="file-info" id="fileInfo">
+                        <div class="file-info-text" id="fileInfoText"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>File Analysis</label>
+                <div class="section">
+                    <div id="xmlFilesInfo" style="font-size: 13px; color: #666; line-height: 1.6;">
+                        Upload a ZIP file to analyze XML and DITA map files...
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="sourceLanguage">Source Language (Detected)</label>
+                <input type="text" id="sourceLanguage" readonly />
+            </div>
+
+            <div class="form-group">
+                <label>Select Target Language</label>
+                <div class="section">
+                    <h3>Common Languages</h3>
+                    <div class="language-grid" id="languageGrid"></div>
+                    <div class="custom-language" id="customLanguageContainer">
+                        <div class="custom-lang-input">
+                            <input type="text" id="customLanguageCode" placeholder="e.g., pt-BR, zh-Hans" maxlength="20" />
+                            <button type="button" onclick="addCustomLanguage()" style="background: #667eea; color: white; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">Add</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Preview</label>
+                <div class="preview-box" id="previewBox">Select a target language to see preview...</div>
+            </div>
+
+            <div id="progressContainer" class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">Processing...</div>
+            </div>
+
+            <div id="stats" class="stats">
+                <div style="font-size: 14px; font-weight: 600; color: #333;">📊 Processing Results</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Original Size</div>
+                        <div class="stat-value" id="originalSize">0 KB</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">New Size</div>
+                        <div class="stat-value" id="newSize">0 KB</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">XML Files</div>
+                        <div class="stat-value" id="xmlFilesCount">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">DITA Files</div>
+                        <div class="stat-value" id="ditaFilesCount">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Replacements</div>
+                        <div class="stat-value" id="replacementsCount">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Target Language</div>
+                        <div class="stat-value" id="statsTargetLang">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="replacedFilesContainer" class="replaced-files-container">
+                <h3>Files with Replacements</h3>
+                <div id="replacedFilesList"></div>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" id="processBtn" disabled>Process Files</button>
+                <button type="reset" id="resetBtn">Reset</button>
+            </div>
+
+            <button type="button" id="downloadBtn" style="background: #4caf50; color: white; grid-column: 1 / -1; padding: 12px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 14px;">
+                ⬇️ Download Modified ZIP
+            </button>
+        </form>
+    </div>
+
+    <script>
+        // State variables
+        let selectedFile = null;
+        let selectedTargetLang = null;
+        let sourceLanguage = null;
+        let cleanedZipBlob = null;
+        let xmlFilesAnalysis = {};
+        let replacedFilesData = [];
+        let progressFill = null;
+        let fileInfo = null;
+
+        const stats = {
+            originalSize: 0,
+            newSize: 0,
+            xmlFilesCount: 0,
+            ditaFilesCount: 0,
+            replacementsCount: 0
+        };
+
+        const languages = [
+            { name: 'English', code: 'en_US', flag: '🇬🇧' },
+            { name: 'Spanish', code: 'es_ES', flag: '🇪🇸' },
+            { name: 'French', code: 'fr_FR', flag: '🇫🇷' },
+            { name: 'German', code: 'de_DE', flag: '🇩🇪' },
+            { name: 'Italian', code: 'it_IT', flag: '🇮🇹' },
+            { name: 'Portuguese', code: 'pt_BR', flag: '🇧🇷' },
+            { name: 'Russian', code: 'ru_RU', flag: '🇷🇺' },
+            { name: 'Chinese', code: 'zh_CN', flag: '🇨🇳' },
+            { name: 'Japanese', code: 'ja_JP', flag: '🇯🇵' },
+            { name: 'Korean', code: 'ko_KO', flag: '🇰🇷' },
+            { name: 'Arabic', code: 'ar_AR', flag: '🇸🇦' },
+            
+        ];
+
+        // Initialize language grid
+        function initializeLanguageGrid() {
+            const grid = document.getElementById('languageGrid');
+            languages.forEach(lang => {
+                const item = document.createElement('div');
+                item.className = 'language-item';
+                item.innerHTML = `
+                    <span class="language-flag">${lang.flag}</span>
+                    <span class="language-name">${lang.name}</span>
+                    <span class="language-code">${lang.code}</span>
+                `;
+                item.addEventListener('click', () => selectLanguage(lang.code, item));
+                grid.appendChild(item);
+            });
+
+            const customItem = document.createElement('div');
+            customItem.className = 'language-item';
+            customItem.innerHTML = `
+                <span class="language-flag">✏️</span>
+                <span class="language-name">Custom</span>
+                <span class="language-code">Other</span>
+            `;
+            customItem.addEventListener('click', () => {
+                document.getElementById('customLanguageContainer').classList.toggle('show');
+            });
+            grid.appendChild(customItem);
+        }
+
+        // Select language
+        function selectLanguage(code, element) {
+            document.querySelectorAll('.language-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            if (element) element.classList.add('selected');
+            selectedTargetLang = code;
+            document.getElementById('customLanguageContainer').classList.remove('show');
+            updatePreview();
+            document.getElementById('processBtn').disabled = false;
+        }
+
+        // Add custom language
+        function addCustomLanguage() {
+            const customCode = document.getElementById('customLanguageCode').value.trim();
+            if (customCode) {
+                selectLanguage(customCode);
+                document.getElementById('customLanguageCode').value = '';
+                document.querySelectorAll('.language-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
+                document.getElementById('processBtn').disabled = false;
+            }
+        }
+
+        // Update preview
+        function updatePreview() {
+            const preview = document.getElementById('previewBox');
+            if (selectedTargetLang) {
+                preview.textContent = `xml:lang="${selectedTargetLang}"`;
+            } else {
+                preview.textContent = 'Select a target language to see preview...';
+            }
+        }
+
+        // Handle file selection
+        progressFill = document.getElementById('progressFill');
+        fileInfo = document.getElementById('fileInfo');
+        const uploadContainer = document.getElementById('uploadContainer');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadContainer.addEventListener('click', () => fileInput.click());
+
+        uploadContainer.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadContainer.classList.add('dragover');
+        });
+
+        uploadContainer.addEventListener('dragleave', () => {
+            uploadContainer.classList.remove('dragover');
+        });
+
+        uploadContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadContainer.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect();
+            }
+        });
+
+        fileInput.addEventListener('change', handleFileSelect);
+
+        async function handleFileSelect() {
+            selectedFile = fileInput.files[0];
+            if (!selectedFile) return;
+
+            stats.originalSize = selectedFile.size;
+            const fileInfoText = document.getElementById('fileInfoText');
+            fileInfoText.innerHTML = `<strong>${selectedFile.name}</strong> (${formatFileSize(selectedFile.size)})`;
+            fileInfo.classList.add('show');
+
+            showStatus('Analyzing ZIP file...', 'info');
+
+            try {
+                const zip = new JSZip();
+                const arrayBuffer = await selectedFile.arrayBuffer();
+                const loadedZip = await zip.loadAsync(arrayBuffer);
+
+                let xmlCount = 0;
+                let ditaCount = 0;
+                sourceLanguage = null;
+
+                for (const [path, zipFile] of Object.entries(loadedZip.files)) {
+                    const lowerPath = path.toLowerCase();
+                    if ((lowerPath.endsWith('.xml') || lowerPath.endsWith('.ditamap')) && !zipFile.dir) {
+                        if (lowerPath.endsWith('.ditamap')) {
+                            ditaCount++;
+                        } else {
+                            xmlCount++;
+                        }
+
+                        try {
+                            const content = await zipFile.async('string');
+                            const match = content.match(/xml:lang\s*=\s*["']([^"']+)["']/);
+                            if (match && !sourceLanguage) {
+                                sourceLanguage = match[1];
+                                xmlFilesAnalysis[path] = sourceLanguage;
+                            }
+                        } catch (e) {
+                            console.log('Could not read:', path);
+                        }
+                    }
+                }
+
+                document.getElementById('sourceLanguage').value = sourceLanguage || 'Not detected yet';
+                const xmlInfo = document.getElementById('xmlFilesInfo');
+                let infoHTML = `<strong>Found:</strong> ${xmlCount} XML file${xmlCount !== 1 ? 's' : ''}`;
+                if (ditaCount > 0) {
+                    infoHTML += ` + ${ditaCount} DITA map file${ditaCount !== 1 ? 's' : ''}`;
+                }
+                infoHTML += `<br><strong>Source Language:</strong> ${sourceLanguage || 'Will be detected during processing'}`;
+                xmlInfo.innerHTML = infoHTML;
+                
+                stats.xmlFilesCount = xmlCount;
+                stats.ditaFilesCount = ditaCount;
+
+                document.getElementById('processBtn').disabled = !selectedTargetLang;
+                showStatus('ZIP file ready to process', 'info');
+            } catch (error) {
+                showStatus('Error analyzing ZIP: ' + error.message, 'error');
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        document.getElementById('mainForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!selectedFile) {
+                showStatus('Please select a ZIP file first', 'error');
+                return;
+            }
+
+            if (!selectedTargetLang) {
+                showStatus('Please select a target language', 'error');
+                return;
+            }
+
+            const progressContainer = document.getElementById('progressContainer');
+            const progressText = document.getElementById('progressText');
+            const processBtn = document.getElementById('processBtn');
+            const statsDiv = document.getElementById('stats');
+
+            progressContainer.classList.add('show');
+            statsDiv.classList.remove('show');
+            document.getElementById('replacedFilesContainer').classList.remove('show');
+            document.getElementById('downloadBtn').classList.remove('show');
+            processBtn.disabled = true;
+            replacedFilesData = [];
+
+            try {
+                const zip = new JSZip();
+                const arrayBuffer = await selectedFile.arrayBuffer();
+                const loadedZip = await zip.loadAsync(arrayBuffer);
+
+                progressText.textContent = 'Analyzing XML and DITA files...';
+                progressFill.style.width = '20%';
+
+                const newZip = new JSZip();
+                let totalProcessableFiles = 0;
+                let processedFiles = 0;
+                let totalReplacements = 0;
+
+                loadedZip.forEach((path, file) => {
+                    const lowerPath = path.toLowerCase();
+                    if ((lowerPath.endsWith('.xml') || lowerPath.endsWith('.ditamap')) && !file.dir) {
+                        totalProcessableFiles++;
+                    }
+                });
+
+                progressText.textContent = 'Processing files...';
+                progressFill.style.width = '40%';
+
+                for (const [path, zipFile] of Object.entries(loadedZip.files)) {
+                    if (zipFile.dir) {
+                        newZip.folder(path);
+                    } else {
+                        let content = await zipFile.async('string');
+                        let replacements = 0;
+                        const lowerPath = path.toLowerCase();
+                        let fileType = null;
+
+                        if (lowerPath.endsWith('.xml') || lowerPath.endsWith('.ditamap')) {
+                            fileType = lowerPath.endsWith('.ditamap') ? 'ditamap' : 'xml';
+                            
+                            const regex = /xml:lang\s*=\s*["']([^"']+)["']/g;
+                            let match;
+                            const oldContent = content;
+
+                            while ((match = regex.exec(oldContent)) !== null) {
+                                replacements++;
+                            }
+
+                            if (replacements > 0) {
+                                content = oldContent.replace(/xml:lang\s*=\s*["']([^"']+)["']/g, `xml:lang="${selectedTargetLang}"`);
+                                totalReplacements += replacements;
+                                replacedFilesData.push({
+                                    path: path,
+                                    replacements: replacements,
+                                    type: fileType
+                                });
+                            }
+                        }
+
+                        newZip.file(path, content);
+                        processedFiles++;
+                        progressFill.style.width = (40 + (processedFiles / (totalProcessableFiles || 1)) * 50) + '%';
+                    }
+                }
+
+                progressText.textContent = 'Creating ZIP file...';
+                progressFill.style.width = '95%';
+
+                cleanedZipBlob = await newZip.generateAsync({ type: 'blob' });
+                stats.newSize = cleanedZipBlob.size;
+                stats.replacementsCount = totalReplacements;
+
+                progressFill.style.width = '100%';
+                progressText.textContent = 'Complete!';
+
+                showStatistics();
+                showStatus('✓ Successfully replaced ' + totalReplacements + ' language code(s)', 'success');
+                document.getElementById('downloadBtn').classList.add('show');
+
+                if (replacedFilesData.length > 0) {
+                    displayReplacedFiles();
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('Error: ' + error.message, 'error');
+            } finally {
+                processBtn.disabled = false;
+            }
+        });
+
+        function displayReplacedFiles() {
+            const container = document.getElementById('replacedFilesContainer');
+            const list = document.getElementById('replacedFilesList');
+            list.innerHTML = '';
+
+            replacedFilesData.forEach(file => {
+                const item = document.createElement('div');
+                item.className = 'deleted-file-item';
+                const typeBadge = `<span class="file-type-badge ${file.type}">${file.type.toUpperCase()}</span>`;
+                item.innerHTML = `<strong>${file.path}</strong>${typeBadge}<br>
+                    ${file.replacements} replacement${file.replacements !== 1 ? 's' : ''}`;
+                list.appendChild(item);
+            });
+
+            container.classList.add('show');
+        }
+
+        function showStatistics() {
+            const statsDiv = document.getElementById('stats');
+            document.getElementById('originalSize').textContent = formatFileSize(stats.originalSize);
+            document.getElementById('newSize').textContent = formatFileSize(stats.newSize);
+            document.getElementById('xmlFilesCount').textContent = stats.xmlFilesCount;
+            document.getElementById('ditaFilesCount').textContent = stats.ditaFilesCount;
+            document.getElementById('replacementsCount').textContent = stats.replacementsCount;
+            document.getElementById('statsTargetLang').textContent = selectedTargetLang;
+            statsDiv.classList.add('show');
+        }
+
+        function showStatus(message, type) {
+            const statusMessage = document.getElementById('statusMessage');
+            statusMessage.textContent = message;
+            statusMessage.className = 'status-message show status-' + type;
+        }
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (cleanedZipBlob) {
+                const url = URL.createObjectURL(cleanedZipBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = selectedFile.name.replace('.zip', `_${selectedTargetLang}.zip`);
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            document.getElementById('mainForm').reset();
+            selectedFile = null;
+            selectedTargetLang = null;
+            sourceLanguage = null;
+            cleanedZipBlob = null;
+            xmlFilesAnalysis = {};
+            replacedFilesData = [];
+            fileInfo.classList.remove('show');
+            document.getElementById('progressContainer').classList.remove('show');
+            document.getElementById('statusMessage').classList.remove('show');
+            document.getElementById('stats').classList.remove('show');
+            document.getElementById('replacedFilesContainer').classList.remove('show');
+            document.getElementById('downloadBtn').classList.remove('show');
+            document.getElementById('customLanguageContainer').classList.remove('show');
+            document.getElementById('sourceLanguage').value = '';
+            document.getElementById('xmlFilesInfo').innerHTML = 'Upload a ZIP file to analyze XML and DITA map files...';
+            document.getElementById('previewBox').textContent = 'Select a target language to see preview...';
+            document.querySelectorAll('.language-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            document.getElementById('processBtn').disabled = true;
+            progressFill.style.width = '0%';
+        });
+
+        initializeLanguageGrid();
+    </script>
+</body>
+</html>
